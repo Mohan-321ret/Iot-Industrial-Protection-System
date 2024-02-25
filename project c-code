@@ -1,0 +1,239 @@
+#include <LiquidCrystal.h>
+#include <LiquidCrystal_I2C.h>
+
+const int relay_fan  = 9;
+const int relay_lamp = 8;
+const int Ldr_in  = 11;
+const int fire_in  = 10;
+
+int annalogpin[] = {A0,A1,A2, A3, A4};
+
+//LiquidCrystal lcd(7, 6, 5, 4, 3, 2);
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+unsigned int  temperature, temperature2,light_indensity1,light_indensity,Ldr,Fire,Gas_in,temp;
+bool first_ser_init,firstTime;
+unsigned int sendT,fan_onT,fan_offT,L_ON_T,L_off_T;
+//SoftwareSerial Serial1(8, 9); // RX,TX
+
+void setup()
+{
+  Serial.begin(9600);
+  //lcd.begin(16, 2);
+  lcd.init();
+  lcd.backlight();
+  lcd.setCursor(0, 0);
+  lcd.print("IOT INDUSTRY");
+  lcd.setCursor(0, 1);
+  lcd.print("PROTECTION SYSTM");
+  pinMode(relay_fan, OUTPUT);
+  pinMode(relay_lamp, OUTPUT);
+  pinMode(Ldr_in, INPUT);
+  pinMode(fire_in, INPUT);
+  digitalWrite(relay_fan, LOW);
+  digitalWrite(relay_lamp, LOW);
+  init_wifi();
+  delay(500);
+  lcd.clear();
+}
+void loop()
+{
+  temperature2 = parameterRead(0, 500);
+  Gas_in = parameterRead(1, 100);
+  Ldr=digitalRead(Ldr_in); 
+  Fire=digitalRead(fire_in); 
+  
+  temp= (temperature2*10)/23;
+  light_indensity=light_indensity1;
+  lcd.setCursor(0, 0);
+  lcd.print("T:");//0,1
+  lcd.setCursor(2, 0);
+  lcd.print(temp/100);
+  lcd.print((temp%100)/10);
+  lcd.print((temp%100)%10);
+  lcd.setCursor(9, 0);
+  lcd.print("G:");//0,1
+  lcd.setCursor(11, 0);
+  lcd.print(Gas_in/100);
+  lcd.print((Gas_in%100)/10);
+  lcd.print((Gas_in%100)%10);
+  lcd.print("  ");
+  lcd.setCursor(0, 1);
+  lcd.print("LDR:");//0,1
+  lcd.print(Ldr);
+  lcd.print("  ");
+  lcd.print("fire:");//0,1
+  lcd.print(Fire);
+  lcd.print("  ");
+  delay(100);  
+  if(temp>40)
+  {
+    fan_offT=0;
+    fan_onT++;
+    if(fan_onT>20)
+    {
+        fan_onT=0;
+        digitalWrite(relay_fan, HIGH);
+    }
+  }
+  else if(temp<40)
+  {
+    fan_offT++;
+    fan_onT=0;
+    if(fan_offT>20)
+    {
+        fan_offT=0;
+        digitalWrite(relay_fan, LOW);
+    }
+  }
+  if(Ldr==0)
+   {
+     digitalWrite(relay_lamp, LOW);
+   }
+  else if(Ldr==1)
+   {
+    digitalWrite(relay_lamp, HIGH);
+   }
+   if(Fire==0)
+   {
+    lcd.clear();
+    lcd.setCursor(0, 1);
+    lcd.print("FIRE DETECTED        ");//0,1
+    SEND_status();
+    delay(2000);
+    lcd.clear();
+   }
+   if(Gas_in>300)
+   {
+    lcd.clear();
+    lcd.setCursor(0, 1);
+    lcd.print("GAS DETECTED        ");//0,1
+    SEND_status();
+    delay(2000);
+    lcd.clear();
+   }
+  
+  sendT++;
+  if(sendT>100)
+  {
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("UPLOADING");//0,1
+    sendT=0;
+    SEND_status();
+    lcd.clear();
+  }
+}
+
+
+int parameterRead(unsigned char ad, int sample)
+{
+  int i, Iadc, I_v;
+ // Iadc = 0; I_v = 0;
+    Iadc = 2; I_v = 0;
+  for (i = 0; i < sample; i++)
+  {
+    Iadc = analogRead(annalogpin[ad]);
+    if (Iadc > I_v)
+    {
+      I_v = Iadc;
+    }
+  }
+  return I_v;
+}
+void enter_wifi()
+{
+  Serial.write(0x0d);
+  Serial.write(0x0a);
+  delay(200);
+}
+void init_wifi()
+{
+  Serial.print("AT");
+  enter_wifi();
+  delay(500);
+  Serial.print("ATE0");
+  enter_wifi();
+  delay(500);
+  Serial.print("AT+GMR");
+  enter_wifi();
+}
+
+void refresh_WiFi_List()
+{
+  Serial.print("AT+CWLAP");
+  enter_wifi();
+  delay(500);
+}
+
+void connect_WiFi()
+{
+  Serial.print("AT+CWJAP=");
+  Serial.write('"');
+  Serial.print("electronics"); 
+  Serial.write('"');
+  Serial.write(',');
+  Serial.write('"');
+  Serial.print("wifihotspot"); 
+  Serial.write('"');
+  enter_wifi();
+}
+
+void get_IP()
+{
+  Serial.print("AT+CIFSR");
+  enter_wifi();
+
+}
+void SEND_status()
+{
+  lcd.setCursor(0, 0);
+  lcd.print("UPLOADING.......");//0,1
+  if(first_ser_init==0)
+  {
+    Serial.print("AT+CIPMUX=1");
+    enter_wifi();
+    first_ser_init=1;
+  }
+  Serial.print("AT+CIPSTART=4");
+  Serial.write(',');
+  Serial.write('"');
+  Serial.print("TCP");
+  Serial.write('"');
+  Serial.write(',');
+  Serial.write('"');
+  Serial.print("184.106.153.149");
+  Serial.write('"');
+  Serial.write(',');
+  Serial.print("80");
+  enter_wifi();
+  Serial.print("AT+CIPSEND=4");
+  Serial.write(',');
+  Serial.print("80");
+  enter_wifi();
+  delay(2000);
+  Serial.print("GET /update?key=4IN1ET0ASZDBLR3C&field1=");//40
+  Serial.print(temp);//4 44
+  Serial.print("&field2=");//8 52
+  Serial.print(Ldr);//4  56
+  Serial.print("&field3=");//8 64
+  Serial.print(Gas_in);//1 65
+  Serial.print("&field4=");//8 73
+  Serial.print(Fire);//1 74
+  enter_wifi();
+  delay(2000);
+  Serial.print("GET /update?key=4IN1ET0ASZDBLR3C&field1=");//40
+  Serial.print(temp);//4 44
+  Serial.print("&field2=");//8 52
+  Serial.print(Ldr);//4  56
+  Serial.print("&field3=");//8 64
+  Serial.print(Gas_in);//1 65
+  Serial.print("&field4=");//8 73
+  Serial.print(Fire);//1 74
+  enter_wifi();
+  delay(2000);
+  lcd.setCursor(0, 0);
+  lcd.print("UPLOADED       ");//0,1
+  delay(2000);
+  lcd.clear();
+}

@@ -1,5 +1,7 @@
 IOT BASED INDUSTRIAL PROTECTION SYSTEM 
+
 OBJECTIVE
+
 Today, smart grid, smart homes, smart water networks, intelligent
 transportation, are infrastructure systems that connect our world more than we ever
 thought possible. The common vision of such systems is usually associated the
@@ -67,7 +69,8 @@ Advantage:
 trouble-shooting is easy..
 2. Reduces man power
 3. Easily implementable.
-4. 
+   
 Application:
+
 1.Maintenance Department for troubleshooting fault.
 2. Quality Department for improvement

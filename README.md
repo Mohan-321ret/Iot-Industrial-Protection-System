@@ -81,5 +81,4 @@ trouble-shooting is easy..
 Application:
 
 1.Maintenance Department for troubleshooting fault.
-
 2. Quality Department for improvement
